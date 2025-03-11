@@ -7,27 +7,30 @@ Original file is located at
     https://colab.research.google.com/drive/11-qLRLFwz0xR2LuUS8DpmMin4HfEQKr1
 """
 
+# Import necessary libraries
 import pandas as pd
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-# Load data
+# Load training and test datasets
 train = pd.read_csv('https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3.csv')
 test = pd.read_csv('https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3test.csv')
 
-# Define features and target
+# Define target variable (dependent variable) and features
 y = train['meal']
 x = train.drop(columns=['meal', 'id', 'DateTime'])
 
-# Ensure test dataset has the same features
+# Ensure the test dataset has the same features as training data
 if 'meal' in test.columns:
-    test = test.drop(columns=['meal'])  # Drop 'meal' if present in the test set
+    test = test.drop(columns=['meal'])  # Drop 'meal' if accidentally included
 
 x_test = test.drop(columns=['id', 'DateTime'])
 
-# Verify that x and x_test have the same columns
+# Ensure training and test sets have the same feature columns
 missing_cols = set(x.columns) - set(x_test.columns)
 extra_cols = set(x_test.columns) - set(x.columns)
 
@@ -36,22 +39,30 @@ if missing_cols:
 if extra_cols:
     print("Warning: Extra columns in test data:", extra_cols)
 
-# Train-Test Split for internal validation
+# Split data for internal validation
 x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.4, random_state=42)
 
-# Initialize and train Decision Tree model
-model = DecisionTreeClassifier(min_samples_leaf=2, random_state=42)
+# Choose a model - Adjust based on performance
+model = RandomForestClassifier(n_estimators=100, min_samples_leaf=5, random_state=42)  # Changeable to DecisionTree or XGBClassifier
+
+# Train the model
 modelFit = model.fit(x_train, y_train)
 
-# In-sample and out-of-sample accuracy
-print("In-sample accuracy: %s%%" % str(round(100 * accuracy_score(y_train, modelFit.predict(x_train)), 2)))
-print("Validation accuracy: %s%%" % str(round(100 * accuracy_score(y_val, modelFit.predict(x_val)), 2)))
+# Evaluate model performance
+train_accuracy = accuracy_score(y_train, modelFit.predict(x_train))
+val_accuracy = accuracy_score(y_val, modelFit.predict(x_val))
 
-# Make predictions on provided test dataset
+print(f"In-sample accuracy: {train_accuracy * 100:.2f}%")
+print(f"Validation accuracy: {val_accuracy * 100:.2f}%")
+
+# Make predictions on test dataset
 pred = modelFit.predict(x_test)
 
 # Ensure predictions are in binary format (0 or 1)
 pred = np.round(pred).astype(int)
 
-# Display first few predictions
+# Ensure exactly 1000 predictions are made
+assert len(pred) == 1000, f"Error: Expected 1000 predictions, but got {len(pred)}"
+
+# Display first few predictions for verification
 print("Sample predictions:", pred[:10])
