@@ -8,47 +8,41 @@ Original file is located at
 """
 
 import pandas as pd
-train_url = "https://raw.githubusercontent.com/dustywhite7/Econ8310/master/AssignmentData/assignment3.csv"
-test_url = "https://raw.githubusercontent.com/dustywhite7/Econ8310/master/AssignmentData/assignment3test.csv"
+import numpy as np
+import joblib
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
 
-train_df = pd.read_csv(train_url)
+# Load training data
+train_url = "https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3.csv"
+df = pd.read_csv(train_url)
+
+# Load test data
+test_url = "https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3test.csv"
 test_df = pd.read_csv(test_url)
 
-train_df.head(), test_df.head()
+# Drop non-essential columns if they exist
+if 'id' in df.columns and 'DateTime' in df.columns:
+    df = df.drop(columns=['id', 'DateTime'])
+if 'id' in test_df.columns and 'DateTime' in test_df.columns:
+    test_df = test_df.drop(columns=['id', 'DateTime'])
 
-# Check for missing values
-print("Missing values in training data:")
-print(train_df.isnull().sum())
+# Identify categorical variables
+categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
 
-print("Missing values in test data:")
-print(test_df.isnull().sum())
+df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
+test_df = pd.get_dummies(test_df, columns=categorical_cols, drop_first=True)
 
-# Check column names
-print("Columns in training data:", train_df.columns)
-print("Columns in test data:", test_df.columns)
+# Align test data with training data
+X = df.drop(columns=["meal"])  # Features
+y = df["meal"]  # Target variable
+X_test = test_df.drop(columns=["meal"], errors='ignore')
+X_test = X_test.reindex(columns=X.columns, fill_value=0)
 
-# Check data types
-print(train_df.dtypes)
-
-# Drop non-essential columns
-train_df = train_df.drop(columns=["id", "DateTime"])
-test_df = test_df.drop(columns=["id", "DateTime"])
-
-# Define features (X) and target variable (y)
-X = train_df.drop(columns=["meal"])  # Drop target column
-y = train_df["meal"]  # Target variable
-
-# Ensure test data has the same feature set
-X_test = test_df.drop(columns=["meal"])  # Drop 'meal' column from test data
-
-from sklearn.model_selection import train_test_split
-
-# Split data (80% training, 20% validation)
+# Split training data for model evaluation
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score
 
 # Initialize models
 models = {
@@ -57,60 +51,28 @@ models = {
     "BoostedTree": GradientBoostingClassifier(n_estimators=100, random_state=42)
 }
 
-# Train and evaluate each model
+# Train and evaluate models
 best_model = None
 best_accuracy = 0
 
 for name, model in models.items():
-    model.fit(X_train, y_train)  # Train model
-    y_pred = model.predict(X_val)  # Make predictions on validation data
-    acc = accuracy_score(y_val, y_pred)  # Calculate accuracy
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_val)
+    acc = accuracy_score(y_val, y_pred)
     print(f"{name} Accuracy: {acc:.4f}")
 
-    # Save the best-performing model
     if acc > best_accuracy:
         best_accuracy = acc
         best_model = model
 
-import joblib
-
 # Save the best model
 joblib.dump(best_model, "model.pkl")
+modelFit = best_model  # Required variable name
 
-# Required variable for submission
-modelFit = best_model
-
-# Generate predictions
+# Make predictions on test data
 pred = best_model.predict(X_test)
+pred = np.where(pred > 0.5, 1, 0)  # Ensure binary outputs (1 or 0)
 
-# Convert predictions to binary (0 or 1)
-pred = (pred > 0.5).astype(int)
-
-# Required variable for submission
-pred
-
-# Create a DataFrame with predictions
+# Save predictions
 predictions_df = pd.DataFrame(pred, columns=["meal_prediction"])
-
-# Save to CSV for submission
 predictions_df.to_csv("predictions.csv", index=False)
-
-print("Predictions saved successfully.")
-
-import matplotlib.pyplot as plt
-
-# Check if model has feature importance
-if hasattr(best_model, "feature_importances_"):
-    importance = best_model.feature_importances_
-    feature_names = X.columns
-
-    # Sort by importance
-    sorted_idx = importance.argsort()
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-    plt.barh(feature_names[sorted_idx], importance[sorted_idx])
-    plt.xlabel("Feature Importance")
-    plt.ylabel("Feature Name")
-    plt.title("Feature Importance in the Best Model")
-    plt.show()
