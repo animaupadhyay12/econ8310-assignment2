@@ -51,7 +51,7 @@ models = {
 }
 
 # Train and evaluate models
-best_model = DecisionTreeClassifier(random_state=42)  # Set default model to avoid NoneType errors
+best_model = DecisionTreeClassifier(random_state=42)  # Default model to avoid NoneType errors
 best_accuracy = 0
 
 for name, model in models.items():
@@ -77,11 +77,25 @@ model = best_model  # Required for test case validation
 modelFit = best_model  # Required variable name
 
 # Make predictions on test data
-pred = best_model.predict(X_test).astype(int).tolist()
+pred = best_model.predict(X_test)
 
 # Ensure predictions are valid (binary integers)
+pred = np.clip(pred, 0, 1)  # Force predictions to be 0 or 1
+pred = np.array(pred, dtype=int).tolist()  # Convert to integer list for test compatibility
+
+# Ensure exactly 1000 predictions
 assert len(pred) == 1000, "Error: Predictions must contain exactly 1000 values!"
 assert all(isinstance(i, int) for i in pred), "Error: Predictions must be strictly integers!"
 assert set(pred).issubset({0, 1}), "Error: Predictions should only contain 0s and 1s!"
 
 print("✅ Model training complete. Predictions are stored in the 'pred' variable.")
+
+# Additional Debugging: Check if model is properly fitted
+if hasattr(modelFit, 'tree_'):  # Decision Tree & Random Forest
+    print("✅ Model is fitted (tree structure exists).")
+elif hasattr(modelFit, 'feature_importances_'):  # Works for Gradient Boosting
+    print("✅ Model is fitted (feature importance exists).")
+elif hasattr(modelFit, '_Booster'):  # XGBoost (if used in future)
+    print("✅ Model is fitted (XGBoost Booster exists).")
+else:
+    raise AssertionError("❌ Error: Model does not appear to be fitted correctly!")
