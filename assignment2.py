@@ -23,65 +23,18 @@ df = pd.read_csv(train_url)
 test_url = "/content/sample_data/assignment2test.csv"
 test_df = pd.read_csv(test_url)
 
-# Drop non-essential columns if they exist
-if 'id' in df.columns and 'DateTime' in df.columns:
-    df = df.drop(columns=['id', 'DateTime'])
-if 'id' in test_df.columns and 'DateTime' in test_df.columns:
-    test_df = test_df.drop(columns=['id', 'DateTime'])
+y = train['meal']
+x = train.drop(['meal', 'id', 'DateTime'], axis = 1)
 
-# Identify categorical variables and apply one-hot encoding
-categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
-df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-test_df = pd.get_dummies(test_df, columns=categorical_cols, drop_first=True)
+model = DecisionTreeClassifier(min_samples_leaf=2, random_state = 42)
 
-# Align test data with training data
-X = df.drop(columns=["meal"])  # Features
-y = df["meal"].astype(int)  # Ensure target is integer
-X_test = test_df.drop(columns=["meal"], errors='ignore')
-X_test = X_test.reindex(columns=X.columns, fill_value=0)
+x, xt, y, yt = train_test_split(x, y, test_size=0.4, random_state=42)
 
-# Split training data for model evaluation
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+modelFit = model.fit(x,y)
 
-# Initialize models
-models = {
-    "DecisionTree": DecisionTreeClassifier(random_state=42),
-    "RandomForest": RandomForestClassifier(n_estimators=100, random_state=42),
-    "BoostedTree": GradientBoostingClassifier(n_estimators=100, random_state=42)
-}
+pred = modelFit.predict(xt)
+print("In-sample accuracy: %s%%" % str(round(100*accuracy_score(y, model.predict(x)), 2)))
+print("Out of sample accuracy: %s%%" % str(round(100*accuracy_score(yt, model.predict(xt)), 2)))
+x_test = test.drop(['meal', 'id', 'DateTime'], axis = 1)
 
-# Train and evaluate models
-best_model = None
-best_accuracy = 0
-
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_val)
-    acc = accuracy_score(y_val, y_pred)
-    print(f"{name} Accuracy: {acc:.4f}")
-
-    if acc > best_accuracy:
-        best_accuracy = acc
-        best_model = model
-
-# Ensure 'model' is a valid classifier
-assert isinstance(best_model, (DecisionTreeClassifier, RandomForestClassifier, GradientBoostingClassifier)), \
-    "Error: model is not a valid classifier!"
-
-# Save the best model
-joblib.dump(best_model, "model.pkl")
-model = best_model  # Required for test case validation
-modelFit = best_model  # Required variable name
-
-# Make predictions on test data
-pred = best_model.predict(X_test)
-
-# Ensure predictions are valid (binary integers)
-pred = np.clip(pred, 0, 1)  # Force predictions to be 0 or 1
-pred = np.array(pred, dtype=int)  # Convert to integer NumPy array
-
-# Ensure exactly 1000 predictions
-assert len(pred) == 1000, "Error: Predictions must contain exactly 1000 values!"
-assert set(np.unique(pred)).issubset({0, 1}), "Error: Predictions should only contain 0s and 1s!"
-
-print("✅ Model training complete. Predictions are stored in the 'pred' variable.")
+pred = modelFit.predict(x_test)
