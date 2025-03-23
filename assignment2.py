@@ -16,11 +16,11 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 
 # Load training data
-train_url = "https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3.csv"
+train_url = "/content/sample_data/assignment2train.csv"
 df = pd.read_csv(train_url)
 
 # Load test data
-test_url = "https://github.com/dustywhite7/Econ8310/raw/master/AssignmentData/assignment3test.csv"
+test_url = "/content/sample_data/assignment2test.csv"
 test_df = pd.read_csv(test_url)
 
 # Drop non-essential columns if they exist
@@ -38,8 +38,6 @@ test_df = pd.get_dummies(test_df, columns=categorical_cols, drop_first=True)
 X = df.drop(columns=["meal"])  # Features
 y = df["meal"].astype(int)  # Ensure target is integer
 X_test = test_df.drop(columns=["meal"], errors='ignore')
-
-# Ensure test set has the same columns as the training set
 X_test = X_test.reindex(columns=X.columns, fill_value=0)
 
 # Split training data for model evaluation
@@ -86,5 +84,4 @@ pred = np.array(pred, dtype=int)  # Convert to integer NumPy array
 assert len(pred) == 1000, "Error: Predictions must contain exactly 1000 values!"
 assert set(np.unique(pred)).issubset({0, 1}), "Error: Predictions should only contain 0s and 1s!"
 
-# Print confirmation message
 print("✅ Model training complete. Predictions are stored in the 'pred' variable.")
